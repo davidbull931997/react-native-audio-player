@@ -37,12 +37,13 @@ const progressBar = StyleSheet.create({
         height: 1,
         backgroundColor: '#dfe6e9'
     },
-    seekIcon: {
-        // top: -6,
+    seekIconContainer: {
         left: 0,
-        // width: 12,
-        // height: 12,
         position: 'absolute',
+        justifyContent: 'center',
+    },
+    seekIcon: {
+        paddingVertical: 10,
     },
     totalTimeContainer: {
         flex: 2,

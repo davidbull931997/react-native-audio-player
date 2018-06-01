@@ -32,7 +32,9 @@ export default class App extends Component {
       autoDestroy: false,
       continuesToPlayInBackground: true
     }).prepare(e => {
-      if (e) { }
+      if (e) {
+        console.log(e);
+      }
       else {
         this.setState({
           currentTime: this.player.currentTime,
@@ -44,6 +46,7 @@ export default class App extends Component {
       console.log(e);
       this.clearTimer();
       this.player._reset();
+      this.setState({ currentState: 'STOP' });
     });
     this.seekAnimationValue = new Animated.ValueXY({ x: 0, y: 0 });
     this.timer = null;
@@ -89,7 +92,11 @@ export default class App extends Component {
     let currentSeconds = Math.floor(this.state.currentTime / 1000);
     let durationSeconds = Math.floor(this.state.duration / 1000);
     let left = this.progressBarWidth / durationSeconds * currentSeconds;
-    return left - (SEEK_ICON_SIZE / 2);
+    if (left > 5) {
+      left = left - (SEEK_ICON_SIZE / 2);
+    }
+    this.seekAnimationValue.setValue({ x: left, y: 0 });
+    // return left - (SEEK_ICON_SIZE / 2);
   }
 
   controlCommand = command => {
@@ -104,8 +111,9 @@ export default class App extends Component {
       case 'PLAY': {
         this.setState({ currentState: 'PLAY' });
         this.timer = TimerMixin.setInterval(() => {
+          console.log(this.player.isPlaying);
           if (this.player.isPlaying == true) {
-            this.setState({ currentTime: this.player.currentTime });
+            this.setState({ currentTime: this.player.currentTime }, () => this.updateProgressBar());
           }
         }, 1000);
         this.player.play(e => console.log(e));
@@ -135,31 +143,26 @@ export default class App extends Component {
       onPanResponderStart: (evt, gestureState) => {
       },
       onPanResponderMove: (evt, gestureState) => {
-        console.log('onPanResponderMove');
-        // console.log(evt.nativeEvent);
-        // console.log(gestureState);
-        let x = gestureState.moveX,
-          max_X = this.leftProgressBarWidth + this.progressBarWidth,
-          min_X = this.leftProgressBarWidth;
-        // console.log(this.leftProgressBarWidth);
-        // if (x > max_X) {
-        //   console.log(0);
-        //   this.seekAnimationValue.setValue({ x: this.progressBarWidth, y: 0 });
-        // } else if (x < min_X) {
-        //   console.log(1);
-        //   this.seekAnimationValue.setValue({ x: 0, y: 0 });
-        // } else {
-        //   console.log(2);
-        //   this.seekAnimationValue.setValue({ x: x, y: 0 });
-        // }
+        let x = evt.nativeEvent.pageX,
+          max_X = this.leftProgressBarWidth + this.progressBarWidth - (SEEK_ICON_SIZE / 2),
+          min_X = this.leftProgressBarWidth - (SEEK_ICON_SIZE / 2);
+
         if (x > min_X && x < max_X) {
           this.seekAnimationValue.setValue({ x: x - this.leftProgressBarWidth, y: 0 });
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
-        // console.log('onPanResponderRelease');
-        // console.log(evt.nativeEvent);
+        console.log('onPanResponderRelease');
+        console.log(evt.nativeEvent.pageX);
         // console.log(gestureState);
+        let x = evt.nativeEvent.pageX,
+          max_X = this.leftProgressBarWidth + this.progressBarWidth - (SEEK_ICON_SIZE / 2),
+          min_X = this.leftProgressBarWidth - (SEEK_ICON_SIZE / 2);
+
+        if (x > min_X && x < max_X) {
+          // this.seekAnimationValue.setValue({ x: x - this.leftProgressBarWidth, y: 0 });
+          // this.player.seek()
+        }
       }
     })
   }
@@ -185,9 +188,6 @@ export default class App extends Component {
       // }
     }
 
-
-    //this.updateProgressBar()
-    console.log(this.seekAnimationValue);
     return (
       <View style={styleSheet.common.container}>
         <View style={styleSheet.progressBar.container}>
@@ -196,8 +196,8 @@ export default class App extends Component {
 
           <View style={styleSheet.progressBar.progressBarContainer}>
             <View style={styleSheet.progressBar.progressView} onLayout={e => this.progressBarWidth = e.nativeEvent.layout.width}></View>
-            <Animated.View {...this.seekPanResponder.panHandlers} style={[styleSheet.progressBar.seekIcon, { width: SEEK_ICON_SIZE, height: SEEK_ICON_SIZE, top: -(SEEK_ICON_SIZE / 2), left: this.seekAnimationValue.x }]}>
-              <Icon name={'circle'} color={'black'} />
+            <Animated.View {...this.seekPanResponder.panHandlers} style={[styleSheet.progressBar.seekIconContainer, { width: SEEK_ICON_SIZE, height: SEEK_ICON_SIZE, top: -(SEEK_ICON_SIZE / 2), left: this.seekAnimationValue.x }]}>
+              <Icon name={'circle'} color={'black'} style={styleSheet.progressBar.seekIcon} />
             </Animated.View>
           </View>
 
