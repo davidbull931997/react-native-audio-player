@@ -5,6 +5,7 @@ const { width: WIDTH, height: HEIGHT } = Dimensions.get('window');
 
 const common = StyleSheet.create({
     container: {
+        // flex: 1,
         // backgroundColor: '#F5FCFF',
     },
     itemContainer: {
@@ -23,14 +24,14 @@ const progressBar = StyleSheet.create({
         alignItems: 'center'
     },
     currentTimeContainer: {
-        flex: 2,
+        flex: 1.5,
         alignItems: 'center'
     },
     progressBarContainer: {
-        flex: 6,
-        alignItems: 'center',
-        position: 'relative',
-        flexDirection: 'row'
+        flex: 7,
+        // alignItems: 'center',
+        // position: 'relative',
+        // flexDirection: 'row'
     },
     progressView: {
         flex: 1,
@@ -46,7 +47,7 @@ const progressBar = StyleSheet.create({
         paddingVertical: 10,
     },
     totalTimeContainer: {
-        flex: 2,
+        flex: 1.5,
         alignItems: 'center'
     },
 });

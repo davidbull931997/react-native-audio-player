@@ -2,8 +2,8 @@ import React, { Component } from 'react';
 import {
   Text,
   View,
+  Slider,
   Platform,
-  Animated,
   StyleSheet,
   PanResponder,
   TouchableOpacity,
@@ -12,6 +12,7 @@ import {
 import { Player } from "react-native-audio-toolkit";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import TimerMixin from 'react-timer-mixin';
+import propTypes from 'prop-types';
 
 import styleSheet from './styles';
 
@@ -28,7 +29,7 @@ export default class App extends Component {
       currentState: 'STOP'
     }
 
-    this.player = new Player('https://ames.edu.vn/uploads/a.mp3', {
+    this.player = new Player(this.props.source, {
       autoDestroy: false,
       continuesToPlayInBackground: true
     }).prepare(e => {
@@ -48,10 +49,7 @@ export default class App extends Component {
       this.player._reset();
       this.setState({ currentState: 'STOP' });
     });
-    this.seekAnimationValue = new Animated.ValueXY({ x: 0, y: 0 });
     this.timer = null;
-    this.progressBarWidth = 0;
-    this.leftProgressBarWidth = 0;
   }
 
   static RENDER_TIME_FORMAT = {
@@ -88,17 +86,6 @@ export default class App extends Component {
     return render;
   }
 
-  updateProgressBar = () => {
-    let currentSeconds = Math.floor(this.state.currentTime / 1000);
-    let durationSeconds = Math.floor(this.state.duration / 1000);
-    let left = this.progressBarWidth / durationSeconds * currentSeconds;
-    if (left > 5) {
-      left = left - (SEEK_ICON_SIZE / 2);
-    }
-    this.seekAnimationValue.setValue({ x: left, y: 0 });
-    // return left - (SEEK_ICON_SIZE / 2);
-  }
-
   controlCommand = command => {
     // console.log(this.player.isPlaying);
     // console.log(this.player.isPaused);
@@ -111,18 +98,17 @@ export default class App extends Component {
       case 'PLAY': {
         this.setState({ currentState: 'PLAY' });
         this.timer = TimerMixin.setInterval(() => {
-          console.log(this.player.isPlaying);
           if (this.player.isPlaying == true) {
-            this.setState({ currentTime: this.player.currentTime }, () => this.updateProgressBar());
+            this.setState({ currentTime: this.player.currentTime });
           }
         }, 1000);
-        this.player.play(e => console.log(e));
+        this.player.play(e => e ? console.log(e) : null);
         break;
       }
       case 'PAUSE': {
         this.setState({ currentState: 'PAUSE' });
         this.clearTimer();
-        this.player.pause(e => console.log(e));
+        this.player.pause(e => e ? console.log(e) : null);
         break;
       }
       case 'NEXT': {
@@ -131,40 +117,15 @@ export default class App extends Component {
       }
       default: break;
     }
+    this.props.onPress(command);
   }
 
   clearTimer = () => {
     TimerMixin.clearInterval(this.timer);
   }
 
-  componentWillMount = () => {
-    this.seekPanResponder = PanResponder.create({
-      onStartShouldSetPanResponder: (evt, gestureState) => true,
-      onPanResponderStart: (evt, gestureState) => {
-      },
-      onPanResponderMove: (evt, gestureState) => {
-        let x = evt.nativeEvent.pageX,
-          max_X = this.leftProgressBarWidth + this.progressBarWidth - (SEEK_ICON_SIZE / 2),
-          min_X = this.leftProgressBarWidth - (SEEK_ICON_SIZE / 2);
-
-        if (x > min_X && x < max_X) {
-          this.seekAnimationValue.setValue({ x: x - this.leftProgressBarWidth, y: 0 });
-        }
-      },
-      onPanResponderRelease: (evt, gestureState) => {
-        console.log('onPanResponderRelease');
-        console.log(evt.nativeEvent.pageX);
-        // console.log(gestureState);
-        let x = evt.nativeEvent.pageX,
-          max_X = this.leftProgressBarWidth + this.progressBarWidth - (SEEK_ICON_SIZE / 2),
-          min_X = this.leftProgressBarWidth - (SEEK_ICON_SIZE / 2);
-
-        if (x > min_X && x < max_X) {
-          // this.seekAnimationValue.setValue({ x: x - this.leftProgressBarWidth, y: 0 });
-          // this.player.seek()
-        }
-      }
-    })
+  onSeek = value => {
+    this.setState({ currentTime: value }, () => this.player.seek(value))
   }
 
   render() {
@@ -192,32 +153,36 @@ export default class App extends Component {
       <View style={styleSheet.common.container}>
         <View style={styleSheet.progressBar.container}>
 
-          <View style={styleSheet.progressBar.currentTimeContainer} onLayout={e => this.leftProgressBarWidth = e.nativeEvent.layout.width}><Text>{this.renderTime(this.state.currentTime)}</Text></View>
+          <View style={styleSheet.progressBar.currentTimeContainer} ><Text>{this.renderTime(this.state.currentTime)}</Text></View>
 
-          <View style={styleSheet.progressBar.progressBarContainer}>
-            <View style={styleSheet.progressBar.progressView} onLayout={e => this.progressBarWidth = e.nativeEvent.layout.width}></View>
-            <Animated.View {...this.seekPanResponder.panHandlers} style={[styleSheet.progressBar.seekIconContainer, { width: SEEK_ICON_SIZE, height: SEEK_ICON_SIZE, top: -(SEEK_ICON_SIZE / 2), left: this.seekAnimationValue.x }]}>
-              <Icon name={'circle'} color={'black'} style={styleSheet.progressBar.seekIcon} />
-            </Animated.View>
-          </View>
+          <Slider
+            value={this.state.currentTime}
+            maximumValue={(this.state.duration)}
+            thumbTintColor={this.props.thumbTintColor}
+            minimumTrackTintColor={this.props.minimumTrackTintColor}
+            maximumTrackTintColor={this.props.maximumTrackTintColor}
+            style={[styleSheet.progressBar.progressBarContainer]}
+            onValueChange={this.onSeek}
+          />
 
           <View style={styleSheet.progressBar.totalTimeContainer}><Text>{this.renderTime(this.state.duration)}</Text></View>
 
         </View>
+
         <View style={styleSheet.controller.container}>
           <View style={styleSheet.controller.buttonContainer}>
             <TouchableComponent {...touchableProps} onPress={this.controlCommand.bind(this, 'PREVIOUS')}>
-              <Icon name={'skip-previous'} size={this.props.iconSize | ICON_SIZE} />
+              <Icon name={'skip-previous'} size={this.props.iconSize} style={this.props.iconStyle} />
             </TouchableComponent>
           </View>
           <View style={styleSheet.controller.buttonContainer}>
             <TouchableComponent {...touchableProps} onPress={this.controlCommand.bind(this, this.state.currentState == 'PLAY' ? 'PAUSE' : 'PLAY')}>
-              <Icon name={this.state.currentState == 'PLAY' ? 'pause-circle' : 'play-circle'} size={this.props.iconSize | ICON_SIZE} />
+              <Icon name={this.state.currentState == 'PLAY' ? 'pause-circle' : 'play-circle'} size={this.props.iconSize} style={this.props.iconStyle} />
             </TouchableComponent>
           </View>
           <View style={styleSheet.controller.buttonContainer}>
             <TouchableComponent {...touchableProps} onPress={this.controlCommand.bind(this, 'NEXT')}>
-              <Icon name={'skip-next'} size={this.props.iconSize | ICON_SIZE} />
+              <Icon name={'skip-next'} size={this.props.iconSize} style={this.props.iconStyle} />
             </TouchableComponent>
           </View>
         </View>
@@ -225,6 +190,25 @@ export default class App extends Component {
     );
   }
 };
+
+App.propTypes = {
+  source: propTypes.string.isRequired,
+  thumbTintColor: propTypes.string,//
+  minimumTrackTintColor: propTypes.string,//
+  maximumTrackTintColor: propTypes.string,//
+  iconStyle: propTypes.object,
+  iconSize: propTypes.number,
+  onPress: propTypes.func.isRequired
+}
+App.defaultProps = {
+  thumbTintColor: null,
+  minimumTrackTintColor: null,
+  maximumTrackTintColor: null,
+  iconStyle: {},
+  iconSize: ICON_SIZE
+}
+
 /*
-  iconSize
+  source: string,
+  onPress: function. Arguments: command 
 */
